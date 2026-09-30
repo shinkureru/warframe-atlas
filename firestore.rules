@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 管理員由站長在 Firebase 主控台授權，前端不能自行建立管理員文件。
+    function signedIn() { return request.auth != null; }
+    function admin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true; }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+    function validPost() {
+      let p = request.resource.data;
+      return p.keys().hasOnly(['title','excerpt','category','tags','author','ratings','coverUrl','sections','builds','acquisition','gameVersion','verifiedAt','attributes','status','submittedBy','createdAt','updatedAt'])
+        && p.keys().hasAll(['title','category','tags','author','status','submittedBy','createdAt','updatedAt'])
+        && p.title is string && p.title.size() > 0 && p.title.size() <= 120
+        && p.category in ['frames','weapons','companions','materials','missions','wiki']
+        && p.tags is list && p.tags.size() >= 1 && p.tags.size() <= 12
+        && (exists(/databases/$(database)/documents/settings/site)
+          ? p.tags.hasOnly(get(/databases/$(database)/documents/settings/site).data.tags)
+            && p.author in get(/databases/$(database)/documents/settings/site).data.authors
+          : p.tags.hasOnly(['Prime','入門','支援','主武器','副武器','靈化','資源','進階','系統']) && p.author == '編輯團隊')
+        && p.author is string && p.author.size() > 0 && p.author.size() <= 50
+        && p.excerpt is string && p.excerpt.size() <= 300
+        && p.sections is list && p.sections.size() <= 20
+        && p.builds is list && p.builds.size() <= 10
+        && p.acquisition is list && p.acquisition.size() <= 40
+        && p.attributes is map && p.attributes.size() <= 12
+        && p.coverUrl is string && p.coverUrl.size() <= 100
+        && p.submittedBy is string && p.createdAt is string && p.updatedAt is string;
+    }
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+    match /settings/site {
+      allow read: if signedIn();
+      allow write: if admin() && request.resource.data.keys().hasOnly(['brand','brandCaption','heroEyebrow','heroTitle','heroAccent','heroDescription','heroButton','heroTarget','heroImage','heroImageAlt','footerText','categories','tags','authors','filters']);
+    }
+    match /posts/{id} {
+      // 一般讀者的清單查詢必須使用 status == 'published'。
+      allow read: if admin() || (signedIn() && resource.data.status == 'published');
+      allow create: if (verified() || admin()) && validPost() && request.resource.data.status == 'pending'
+        && request.resource.data.submittedBy == request.auth.uid
+        || admin() && request.resource.data.status == 'draft'
+        && request.resource.data.submittedBy == request.auth.uid
+        && request.resource.data.title is string && request.resource.data.title.size() > 0;
+      allow update: if admin() && request.resource.data.status in ['draft','pending','published','rejected'];
+      allow delete: if admin();
+    }
+    match /media/{id} {
+      // 待審圖片只供作者及管理員查看，核准後隨公開文章讀取。
+      allow get: if signedIn() && (
+        admin() || resource.data.ownerUid == request.auth.uid
+        || resource.data.usage == 'post' && exists(/databases/$(database)/documents/posts/$(resource.data.postId))
+          && get(/databases/$(database)/documents/posts/$(resource.data.postId)).data.status == 'published'
+        || resource.data.usage == 'site' && exists(/databases/$(database)/documents/settings/site)
+          && get(/databases/$(database)/documents/settings/site).data.heroImage == ('media:' + id)
+      );
+      allow list: if false;
+      allow create: if signedIn() && (verified() || admin())
+        && request.resource.data.keys().hasOnly(['dataUrl','ownerUid','usage','postId','createdAt'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.postId is string
+        && request.resource.data.usage in ['post','site']
+        && (request.resource.data.usage == 'post' && request.resource.data.postId.matches('^[A-Za-z0-9_-]{1,80}$')
+            || request.resource.data.usage == 'site' && admin() && request.resource.data.postId == '')
+        && request.resource.data.dataUrl is string && request.resource.data.dataUrl.size() <= 220000
+        && request.resource.data.dataUrl.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$');
+      allow update, delete: if admin();
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

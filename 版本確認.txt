@@ -1,0 +1,4 @@
+版本 0.4.1（Google 登入版）
+請在 VS Code 開啟這個壓縮檔解出的 warframe-atlas 資料夾。
+檢查 src/components/LoginGate.jsx，可搜尋「使用 Google 帳號繼續」。
+本版專案根目錄沒有 functions 資料夾。
