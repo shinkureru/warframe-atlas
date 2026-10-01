@@ -19,7 +19,7 @@ export const siteDefaults = {
   heroTitle: '你的星圖，', heroAccent: '從這裡開始。', heroDescription: '把每一次嘗試寫成攻略，讓下一次出發更有方向。',
   heroButton: '開始探索', heroTarget: '/category/frames', heroImage: '', heroImageAlt: '戰甲攻略封面',
   footerText: '獨立製作的非官方攻略網站', categories: fallbackCategories,
-  tags: ['Prime', '入門', '支援', '主武器', '副武器', '靈化', '資源', '進階', '系統'], authors: ['編輯團隊'], filters: [],
+  tags: ['Prime', '入門', '支援', '主武器', '副武器', '靈化', '資源', '進階', '系統'], authors: ['編輯團隊'], filters: [], modIcons: [],
 };
 const friendly = (error) => {
   const messages = { 'auth/invalid-credential': '電子郵件或密碼不正確。', 'auth/email-already-in-use': '此電子郵件已有帳號。',
@@ -162,15 +162,17 @@ export async function archiveCall(action, payload = {}) {
   } catch (error) { throw friendly(error); }
 }
 
-// Spark 方案不使用 Cloud Storage；將圖片壓成小 JPEG 存在獨立 Firestore 文件。
+// Spark 方案不使用 Cloud Storage；MOD 圖案縮到 256px，與文章圖片同存獨立 Firestore 文件。
 export async function uploadImage(file, usage = 'post', postId = '') {
   const user = requireUser();
   if (!file?.type?.startsWith('image/')) throw new Error('請選擇圖片檔。');
   if (file.size > 8 * 1024 * 1024) throw new Error('原始圖片不能超過 8 MB。');
   if (usage === 'post' && !/^[A-Za-z0-9_-]{1,80}$/.test(postId)) throw new Error('圖片缺少文章識別碼，請重新開啟編輯器。');
   if (usage === 'post' && !user.emailVerified && !await isAdmin(user)) throw new Error('請先驗證電子郵件才能上傳圖片。');
+  if (usage === 'mod-icon' && !await isAdmin(user)) throw new Error('只有管理員可以上傳 MOD 圖案。');
+  if (!['post', 'site', 'mod-icon'].includes(usage)) throw new Error('不支援的圖片用途。');
   const image = await createImageBitmap(file);
-  const scale = Math.min(1, 1200 / Math.max(image.width, image.height));
+  const scale = Math.min(1, (usage === 'mod-icon' ? 256 : 1200) / Math.max(image.width, image.height));
   const canvas = document.createElement('canvas'); canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale);
   const context = canvas.getContext('2d'); context.fillStyle = '#f5f7f8'; context.fillRect(0, 0, canvas.width, canvas.height); context.drawImage(image, 0, 0, canvas.width, canvas.height); image.close();
   let dataUrl = '';

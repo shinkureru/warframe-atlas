@@ -15,6 +15,7 @@ export default function SiteSettingsPanel({ site }) {
   const change = (key, value) => setDraft((previous) => ({ ...previous, [key]: value }));
   const categories = draft.categories || [];
   const filters = draft.filters || [];
+  const modIcons = draft.modIcons || [];
   const updateCategory = (slug, field, value) => change('categories', categories.map((cat) => cat.slug === slug ? { ...cat, [field]: value } : cat));
   const updateFilter = (id, patch) => change('filters', filters.map((filter) => filter.id === id ? { ...filter, ...patch } : filter));
   async function uploadBanner(file) {
@@ -22,16 +23,28 @@ export default function SiteSettingsPanel({ site }) {
     try { const result = await uploadImage(file, 'site'); change('heroImage', result.url); setMessage('圖片已上傳，請再按「儲存網站設定」才會對讀者顯示。'); }
     catch (error) { setMessage(error.message); } finally { setBusy(false); }
   }
+  // 圖案先上傳到 Firestore，按下儲存後才加入所有作者可選的共用圖案庫。
+  async function uploadModIcon(file) {
+    if (!file) return;
+    if (modIcons.length >= 60) { setMessage('最多可保留 60 個 MOD 圖案，請先移除不用的選項。'); return; }
+    setBusy(true); setMessage('');
+    try {
+      const result = await uploadImage(file, 'mod-icon');
+      setDraft((previous) => ({ ...previous, modIcons: [...(previous.modIcons || []), { name: file.name.replace(/\.[^.]+$/, '').slice(0, 60) || '未命名圖案', url: result.url }] }));
+      setMessage('圖案已上傳，請按「儲存網站設定」才會出現在投稿選單。');
+    } catch (error) { setMessage(error.message); } finally { setBusy(false); }
+  }
   async function save(event) {
     event.preventDefault(); setBusy(true); setMessage('');
     try {
       if (filters.some((filter) => !filter.label.trim() || !filter.options?.length || filter.options.some((option) => !option.trim()))) throw new Error('每個篩選欄位和選項都不能空白。');
+      if (modIcons.some((icon) => !icon.name.trim())) throw new Error('MOD 圖案名稱不能空白。');
       await archiveCall('saveSite', { value: {
         brand: draft.brand, brandCaption: draft.brandCaption, footerText: draft.footerText,
         heroEyebrow: draft.heroEyebrow, heroTitle: draft.heroTitle, heroAccent: draft.heroAccent,
         heroDescription: draft.heroDescription, heroButton: draft.heroButton, heroTarget: draft.heroTarget,
         heroImage: draft.heroImage || '', heroImageAlt: draft.heroImageAlt || '',
-        categories: draft.categories, filters: draft.filters,
+        categories: draft.categories, filters: draft.filters, modIcons,
       } });
       await dispatch(loadContent()).unwrap(); setMessage('網站設定已儲存，讀者重新載入後會看到新內容。');
     } catch (error) { setMessage(error.message); } finally { setBusy(false); }
@@ -49,6 +62,8 @@ export default function SiteSettingsPanel({ site }) {
     <div className="settings-categories">{categories.map((cat) => <div key={cat.slug}><strong>{cat.slug}</strong>{[['label','顯示名稱',20],['eyebrow','英文名稱',30],['description','說明',100]].map(([field,label,max]) => <input key={field} className="form-control custom-input" aria-label={`${cat.slug} ${label}`} maxLength={max} value={cat[field]} onChange={(e) => updateCategory(cat.slug, field, e.target.value)} />)}<label>底色 <input type="color" value={cat.color} onChange={(e) => updateCategory(cat.slug, 'color', e.target.value)} /></label></div>)}</div>
     <div className="editor-section-heading settings-filter-heading"><div><h3>自訂篩選欄位</h3><p className="panel-note">新增後，投稿編輯器與分類頁會出現相同的選項。</p></div><button type="button" className="outline-button" onClick={() => change('filters', [...filters, { id: `f_${crypto.randomUUID().slice(0, 12)}`, label: '新篩選', category: 'frames', options: ['選項一'] }])}><Plus size={16} /> 新增欄位</button></div>
     {filters.map((filter) => <div className="settings-filter" key={filter.id}><div className="settings-grid"><label>欄位名稱<input className="form-control custom-input" maxLength={24} value={filter.label} onChange={(e) => updateFilter(filter.id, { label: e.target.value })} /></label><label>適用分類<select className="form-select custom-input" value={filter.category} onChange={(e) => updateFilter(filter.id, { category: e.target.value })}><option value="all">全部分類</option>{categories.map((cat) => <option key={cat.slug} value={cat.slug}>{cat.label}</option>)}</select></label></div><div className="settings-options">{filter.options.map((option, i) => <label key={i}>選項 {i + 1}<input className="form-control custom-input" maxLength={30} value={option} onChange={(e) => updateFilter(filter.id, { options: filter.options.map((v, n) => n === i ? e.target.value : v) })} /><button type="button" aria-label={`移除選項${i + 1}`} onClick={() => updateFilter(filter.id, { options: filter.options.filter((_, n) => n !== i) })}><Trash2 size={15} /></button></label>)}</div><div className="settings-filter-actions"><button type="button" className="outline-button" onClick={() => updateFilter(filter.id, { options: [...filter.options, ''] })}><Plus size={15} /> 新增選項</button><button type="button" className="subtle-delete" onClick={() => change('filters', filters.filter((item) => item.id !== filter.id))}><Trash2 size={15} /> 移除欄位</button></div></div>)}
+    <div className="editor-section-heading settings-filter-heading"><div><h3>MOD 圖案庫</h3><p className="panel-note">上傳一次即可在所有文章的 MOD 欄位選用。移除選項不會刪掉舊文章已選的圖案。</p></div><label className="outline-button mod-icon-upload"><ImagePlus size={16} /> {busy ? '處理中…' : '上傳新圖案'}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy || modIcons.length >= 60} onChange={(event) => { uploadModIcon(event.target.files?.[0]); event.target.value = ''; }} /></label></div>
+    <div className="mod-icon-library">{modIcons.map((icon, index) => <div className="mod-icon-library-item" key={icon.url}><MediaImage src={icon.url} alt={icon.name} /><input className="form-control custom-input" aria-label={`圖案 ${index + 1} 名稱`} maxLength={60} value={icon.name} onChange={(event) => change('modIcons', modIcons.map((entry, i) => i === index ? { ...entry, name: event.target.value } : entry))} /><button type="button" className="subtle-delete" aria-label={`移除 ${icon.name}`} onClick={() => change('modIcons', modIcons.filter((_, i) => i !== index))}><Trash2 size={16} /></button></div>)}</div>
     {message && <p className="backup-message" role="status">{message}</p>}
     <button type="submit" className="btn-primary-custom" disabled={busy}><Save size={17} /> 儲存網站設定</button>
   </form>;

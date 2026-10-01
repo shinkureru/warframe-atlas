@@ -46,4 +46,14 @@ try {
     await assertSucceeds(other.doc('media/photo-1').get());
     await assertFails(other.collection('media').get());
   });
+  // MOD 圖案可供已登入讀者載入，圖案庫及圖片寫入仍只限管理員。
+  await test('MOD 圖案上傳、讀取與圖案庫權限', async () => {
+    const icon = { dataUrl: 'data:image/jpeg;base64,/9j/AA==', usage: 'mod-icon', postId: '', createdAt: '2026-10-01' };
+    await assertFails(author.doc('media/icon-reader').set({ ...icon, ownerUid: 'writer-uid' }));
+    await assertSucceeds(admin.doc('media/icon-1').set({ ...icon, ownerUid: 'admin-uid' }));
+    await assertSucceeds(other.doc('media/icon-1').get());
+    await assertFails(author.doc('settings/site').update({ modIcons: [{ name: '光環', url: 'media:icon-1' }] }));
+    await assertSucceeds(admin.doc('settings/site').update({ modIcons: [{ name: '光環', url: 'media:icon-1' }] }));
+    await assertSucceeds(other.doc('settings/site').get());
+  });
 } finally { await env.cleanup(); }

@@ -44,8 +44,8 @@ export default function App() {
           <Route path="/article/:id" element={<ArticleDetail role={role} categories={categories} posts={visiblePosts} />} />
           <Route path="/submission/:id" element={<SubmissionReceipt />} />
           <Route path="/admin" element={role === 'admin' ? <AdminPage posts={content.posts} tags={content.tags} authors={content.authors} categories={categories} site={content.site} /> : <AccessDenied />} />
-          <Route path="/editor/new" element={<EditorPage role={role} categories={categories} tags={content.tags} authors={content.authors} filters={content.filters} />} />
-          <Route path="/editor/:id" element={role === 'admin' ? <EditorPage role={role} categories={categories} tags={content.tags} authors={content.authors} filters={content.filters} /> : <AccessDenied />} />
+          <Route path="/editor/new" element={<EditorPage role={role} categories={categories} tags={content.tags} authors={content.authors} filters={content.filters} modIcons={content.site.modIcons || []} />} />
+          <Route path="/editor/:id" element={role === 'admin' ? <EditorPage role={role} categories={categories} tags={content.tags} authors={content.authors} filters={content.filters} modIcons={content.site.modIcons || []} /> : <AccessDenied />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes></Suspense>
       </main>
