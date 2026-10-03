@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, browserLocalPersistence, browserSessionPersistence, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, signOut, connectAuthEmulator, GoogleAuthProvider, signInWithPopup, linkWithPopup } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, limit, writeBatch, connectFirestoreEmulator } from 'firebase/firestore/lite';
 import { fallbackCategories } from '../data/categories.js';
+import { checklistDefaults } from './schedule.js';
 
 // 網頁識別碼可公開；真正的存取由 Firebase Auth 與 Firestore 規則控制。
 const app = initializeApp({ apiKey: import.meta.env.VITE_FIREBASE_API_KEY, authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -20,6 +21,7 @@ export const siteDefaults = {
   heroButton: '開始探索', heroTarget: '/category/frames', heroImage: '', heroImageAlt: '戰甲攻略封面',
   footerText: '獨立製作的非官方攻略網站', categories: fallbackCategories,
   tags: ['Prime', '入門', '支援', '主武器', '副武器', '靈化', '資源', '進階', '系統'], authors: ['編輯團隊'], filters: [], modIcons: [],
+  timers: [], checklists: checklistDefaults,
 };
 const friendly = (error) => {
   const messages = { 'auth/invalid-credential': '電子郵件或密碼不正確。', 'auth/email-already-in-use': '此電子郵件已有帳號。',

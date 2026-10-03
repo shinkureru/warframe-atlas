@@ -7,6 +7,7 @@ import { makeSeed } from '../data/demo.js';
 import LoginGate from '../components/LoginGate.jsx';
 import Header from '../components/Header.jsx';
 import Footer from '../components/Footer.jsx';
+import ResetNotice from '../components/ResetNotice.jsx';
 const Home = lazy(() => import('../pages/Home.jsx'));
 const CategoryPage = lazy(() => import('../pages/CategoryPage.jsx'));
 const SearchPage = lazy(() => import('../pages/SearchPage.jsx'));
@@ -15,6 +16,7 @@ const AdminPage = lazy(() => import('../pages/AdminPage.jsx'));
 const EditorPage = lazy(() => import('../pages/EditorPage.jsx'));
 const AccessDenied = lazy(() => import('../pages/AccessDenied.jsx'));
 const SubmissionReceipt = lazy(() => import('../pages/SubmissionReceipt.jsx'));
+const DailyWeeklyPage = lazy(() => import('../pages/DailyWeeklyPage.jsx'));
 
 const demoPosts = makeSeed().posts;
 
@@ -35,12 +37,14 @@ export default function App() {
   return (
     <div className="site-shell">
       <Header role={role} site={content.site} />
+      <ResetNotice checklists={content.site.checklists} />
       <main className="main-wrap">
         {content.status === 'error' && <div className="alert alert-danger mt-3" role="alert">{content.error} <button className="btn btn-link" onClick={() => dispatch(loadContent())}>重試</button></div>}
         <Suspense fallback={<div className="app-loader"><span className="spinner-border spinner-border-sm" /> 正在載入頁面…</div>}><Routes>
           <Route path="/" element={<Home posts={visiblePosts} categories={categories} role={role} site={content.site} />} />
           <Route path="/category/:slug" element={<CategoryPage posts={visiblePosts} categories={categories} tags={content.tags} filters={content.filters} role={role} />} />
           <Route path="/search" element={<SearchPage posts={visiblePosts} categories={categories} />} />
+          <Route path="/daily-weekly" element={<DailyWeeklyPage checklists={content.site.checklists} />} />
           <Route path="/article/:id" element={<ArticleDetail role={role} categories={categories} posts={visiblePosts} />} />
           <Route path="/submission/:id" element={<SubmissionReceipt />} />
           <Route path="/admin" element={role === 'admin' ? <AdminPage posts={content.posts} tags={content.tags} authors={content.authors} categories={categories} site={content.site} /> : <AccessDenied />} />

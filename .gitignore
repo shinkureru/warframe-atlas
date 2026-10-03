@@ -8,3 +8,4 @@ dist/
 .firebase/
 *-debug.log
 .env.local
+UPDATE_GUIDE

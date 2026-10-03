@@ -32,8 +32,10 @@ service cloud.firestore {
     }
     match /settings/site {
       allow read: if signedIn();
-      allow write: if admin() && request.resource.data.keys().hasOnly(['brand','brandCaption','heroEyebrow','heroTitle','heroAccent','heroDescription','heroButton','heroTarget','heroImage','heroImageAlt','footerText','categories','tags','authors','filters','modIcons'])
-        && (!request.resource.data.keys().hasAny(['modIcons']) || request.resource.data.modIcons is list && request.resource.data.modIcons.size() <= 60);
+      allow write: if admin() && request.resource.data.keys().hasOnly(['brand','brandCaption','heroEyebrow','heroTitle','heroAccent','heroDescription','heroButton','heroTarget','heroImage','heroImageAlt','footerText','categories','tags','authors','filters','modIcons','timers','checklists'])
+        && (!request.resource.data.keys().hasAny(['modIcons']) || request.resource.data.modIcons is list && request.resource.data.modIcons.size() <= 60)
+        && (!request.resource.data.keys().hasAny(['timers']) || request.resource.data.timers is list && request.resource.data.timers.size() <= 8)
+        && (!request.resource.data.keys().hasAny(['checklists']) || request.resource.data.checklists is map);
     }
     match /posts/{id} {
       // 一般讀者的清單查詢必須使用 status == 'published'。

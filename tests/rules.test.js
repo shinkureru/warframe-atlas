@@ -34,6 +34,8 @@ try {
     await assertFails(inactive.doc('settings/site').set({ brand: '冒用管理員' }));
     await assertFails(author.doc('settings/site').set({ brand: '假管理員' }));
     await assertSucceeds(admin.doc('settings/site').set({ brand: 'ORIGIN', heroImage: 'media:banner-1', tags: ['入門'], authors: ['編輯團隊'] }));
+    await assertFails(author.doc('settings/site').update({ timers: [{ name: '偽造' }] }));
+    await assertSucceeds(admin.doc('settings/site').update({ timers: [], checklists: { daily: { hour: 8, minute: 0, items: [] }, weekly: { weekday: 1, hour: 8, minute: 0, items: [] } } }));
     await assertFails(author.doc('posts/invalid-tag').set({ ...post, tags: ['隨意偽造'] }));
   });
   await test('待審圖片作者可看，文章核准後所有登入者可看', async () => {
